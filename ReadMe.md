@@ -147,6 +147,8 @@ Beyond synthetic data, created **interaction features** that mimic HR dynamics:
 -   `Tenure × JobMarketIndex` → new joiners more likely to leave in hot job markets
 -   `LowSalary × LowNineBox` → underpaid + stuck = flight risk
 
+<img width="1868" height="604" alt="image" src="https://github.com/user-attachments/assets/b8306fcb-67ba-4e53-a3b3-6d99cf316ce5" />
+
     
 Result: Dataset became **business-realistic & interpretable**.
 
