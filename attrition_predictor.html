@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HR Attrition Predictor - Live Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(to right, #6a11cb 0%, #2575fc 100%);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background-color: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            max-width: 95%;
+            width: 100%;
+        }
+        input[type="number"], select, textarea {
+            background-color: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #fff;
+        }
+        input[type="number"]:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.6);
+        }
+        .placeholder-white::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+        .btn {
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .model-toggle {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-bottom: 2rem;
+        }
+        .model-btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 9999px;
+            border: 2px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .model-btn.active {
+            background: #fff;
+            color: #6a11cb;
+            border-color: #fff;
+        }
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .prediction-card {
+            background: rgba(0,0,0,0.2);
+            border-radius: 1rem;
+            padding: 1rem;
+            text-align: center;
+        }
+        .prediction-card.high-risk {
+            border-left: 4px solid #ef4444;
+        }
+        .prediction-card.medium-risk {
+            border-left: 4px solid #f59e0b;
+        }
+        .prediction-card.low-risk {
+            border-left: 4px solid #10b981;
+        }
+    </style>
+</head>
+<body class="p-4">
+    <div class="container p-8 space-y-8 shadow-lg rounded-xl">
+        <div class="text-center">
+            <h1 class="text-3xl font-bold">HR Attrition Predictor</h1>
+            <p class="text-lg text-gray-200 mt-2">Real-time Employee Attrition Risk Assessment</p>
+            <p class="text-sm text-gray-300 mt-1">Powered by XGBoost, CatBoost, and Ensemble Models</p>
+        </div>
+
+        <!-- Model Selection -->
+        <div class="model-toggle">
+            <button id="xgbBtn" class="model-btn active" onclick="selectModel('xgboost', 5001)">
+                XGBoost (Conservative)
+            </button>
+            <button id="catBtn" class="model-btn" onclick="selectModel('catboost', 5002)">
+                CatBoost (Sensitive)
+            </button>
+            <button id="ensBtn" class="model-btn" onclick="selectModel('ensemble', 5003)">
+                Ensemble (Recommended)
+            </button>
+        </div>
+
+        <!-- Prediction Result Container -->
+        <div id="resultContainer" class="space-y-4" style="display: none;">
+            <div id="singleResult" class="p-6 text-center bg-gray-800 rounded-lg shadow-inner">
+                <p class="text-xl font-semibold">Prediction Result:</p>
+                <p id="predictionResult" class="text-3xl font-bold mt-2"></p>
+                <p id="modelUsed" class="text-sm text-gray-400 mt-1"></p>
+            </div>
+            
+            <div id="comparisonResult" class="comparison-grid" style="display: none;">
+                <!-- Comparison cards will be populated by JavaScript -->
+            </div>
+            
+            <div class="bg-gray-900 rounded-lg p-4">
+                <p class="text-sm font-semibold mb-2">Full API Response:</p>
+                <pre id="rawResponse" class="text-xs text-gray-300 whitespace-pre-wrap overflow-auto max-h-40"></pre>
+            </div>
+        </div>
+
+        <!-- Mode Toggle Buttons -->
+        <div class="flex justify-center space-x-4">
+            <button id="formModeBtn" class="btn px-6 py-2 rounded-full text-white font-semibold bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                Individual Fields
+            </button>
+            <button id="jsonModeBtn" class="btn px-6 py-2 rounded-full text-white font-semibold bg-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                JSON Input
+            </button>
+            <button id="presetBtn" class="btn px-6 py-2 rounded-full text-white font-semibold bg-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                Test Presets
+            </button>
+        </div>
+
+        <!-- Preset Testing Mode -->
+        <div id="presetMode" class="space-y-4" style="display: none;">
+            <p class="text-center text-gray-300">Quick test with predefined employee profiles:</p>
+            <div class="flex justify-center space-x-4">
+                <button onclick="testHighRiskEmployee()" class="btn bg-red-500 text-white font-bold py-3 px-6 rounded-full">
+                    🚨 High Risk Employee
+                </button>
+                <button onclick="testLowRiskEmployee()" class="btn bg-green-500 text-white font-bold py-3 px-6 rounded-full">
+                    ✅ Low Risk Employee
+                </button>
+                <button onclick="compareAllModels()" class="btn bg-blue-500 text-white font-bold py-3 px-6 rounded-full">
+                    📊 Compare All Models
+                </button>
+            </div>
+        </div>
+
+        <!-- Form Input Mode -->
+        <form id="inputForm" class="space-y-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- Essential HR Fields -->
+            <div>
+                <label for="Age" class="block text-sm font-medium">Age</label>
+                <input type="number" id="Age" name="Age" class="w-full px-4 py-2 mt-1 rounded-md placeholder-white" placeholder="e.g., 30" value="30">
+            </div>
+            <div>
+                <label for="MonthlyIncome" class="block text-sm font-medium">Monthly Income</label>
+                <input type="number" id="MonthlyIncome" name="MonthlyIncome" class="w-full px-4 py-2 mt-1 rounded-md placeholder-white" placeholder="e.g., 6000" value="6000">
+            </div>
+            <div>
+                <label for="YearsAtCompany" class="block text-sm font-medium">Years at Company</label>
+                <input type="number" id="YearsAtCompany" name="YearsAtCompany" step="0.1" class="w-full px-4 py-2 mt-1 rounded-md placeholder-white" placeholder="e.g., 5.0" value="5.0">
+            </div>
+            <div>
+                <label for="JobSatisfaction" class="block text-sm font-medium">Job Satisfaction</label>
+                <select id="JobSatisfaction" name="JobSatisfaction" class="w-full px-4 py-2 mt-1 rounded-md">
+                    <option value="1">1 - Very Low</option>
+                    <option value="2">2 - Low</option>
+                    <option value="3" selected>3 - Medium</option>
+                    <option value="4">4 - High</option>
+                </select>
+            </div>
+            <div>
+                <label for="WorkLifeBalance" class="block text-sm font-medium">Work-Life Balance</label>
+                <select id="WorkLifeBalance" name="WorkLifeBalance" class="w-full px-4 py-2 mt-1 rounded-md">
+                    <option value="1">1 - Poor</option>
+                    <option value="2">2 - Fair</option>
+                    <option value="3" selected>3 - Good</option>
+                    <option value="4">4 - Excellent</option>
+                </select>
+            </div>
+            <div>
+                <label for="OverTime" class="block text-sm font-medium">Works Overtime</label>
+                <select id="OverTime" name="OverTime" class="w-full px-4 py-2 mt-1 rounded-md">
+                    <option value="No" selected>No</option>
+                    <option value="Yes">Yes</option>
+                </select>
+            </div>
+            <div>
+                <label for="BusinessTravel" class="block text-sm font-medium">Business Travel</label>
+                <select id="BusinessTravel" name="BusinessTravel" class="w-full px-4 py-2 mt-1 rounded-md">
+                    <option value="Non-Travel" selected>Non-Travel</option>
+                    <option value="Travel_Rarely">Travel Rarely</option>
+                    <option value="Travel_Frequently">Travel Frequently</option>
+                </select>
+            </div>
+            <div>
+                <label for="Department" class="block text-sm font-medium">Department</label>
+                <select id="Department" name="Department" class="w-full px-4 py-2 mt-1 rounded-md">
+                    <option value="IT" selected>IT</option>
+                    <option value="Sales & Marketing">Sales & Marketing</option>
+                    <option value="Operations">Operations</option>
+                    <option value="Finance">Finance</option>
+                </select>
+            </div>
+            <div>
+                <label for="NineBoxScore" class="block text-sm font-medium">NineBox Score (1-9)</label>
+                <input type="number" id="NineBoxScore" name="NineBoxScore" min="1" max="9" class="w-full px-4 py-2 mt-1 rounded-md placeholder-white" placeholder="1-9" value="5">
+            </div>
+            
+            <div class="col-span-1 md:col-span-2 lg:col-span-3 text-center pt-4">
+                <button type="submit" id="predictBtn" class="btn bg-green-500 text-white font-bold py-3 px-8 rounded-full shadow-lg">
+                    🔮 Predict Attrition Risk
+                </button>
+            </div>
+        </form>
+
+        <!-- JSON Input Mode -->
+        <div id="jsonInput" class="space-y-4" style="display: none;">
+            <p class="text-sm text-center text-gray-300">
+                Paste your complete employee JSON below. <a href="#" id="viewSampleBtn" class="underline text-blue-300">View Sample JSON</a>
+            </p>
+            <textarea id="jsonPayload" rows="20" class="w-full px-4 py-2 rounded-md placeholder-white font-mono text-sm" placeholder="Paste complete employee JSON here..."></textarea>
+            <div class="text-center">
+                <button id="predictJsonBtn" class="btn bg-green-500 text-white font-bold py-3 px-8 rounded-full shadow-lg">
+                    🔮 Predict with JSON
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentModel = 'ensemble';
+        let currentPort = 5003;
+        let currentMode = 'form';
+
+        // Sample employee data for testing
+        const highRiskEmployee = {
+            "EmployeeID": 99998,
+            "FirstName": "John",
+            "LastName": "Unhappy", 
+            "Email": "john.unhappy@company.com",
+            "Age": 28,
+            "City": "Mumbai",
+            "Race": "Asian",
+            "Ethnicity": "Hindi",
+            "Department": "Sales & Marketing",
+            "JobRole": "B",
+            "MonthlyIncome": 800,
+            "YearsAtCompany": 0.05,
+            "NumProjects": 8,
+            "TeamSize": 12,
+            "JobSatisfaction": 1,
+            "EnvironmentSatisfaction": 1,
+            "WorkLifeBalance": 1,
+            "DistanceFromHome": 45,
+            "NumCompaniesWorked": 6,
+            "PercentSalaryHike": 0,
+            "PerformanceRating": 1,
+            "OverTime": "Yes",
+            "BusinessTravel": "Travel_Frequently",
+            "MaritalStatus": "Single",
+            "EducationLevel": "Bachelor",
+            "TotalYearsExperience": 3,
+            "PreviousIndustry": "Other",
+            "TownhallAttendance": 0.1,
+            "VoluntaryContributions": 0,
+            "LeadershipRoles": "No",
+            "InternalJobApplications": 8,
+            "TrainingHoursLastYear": 0,
+            "StockOptionLevel": 0,
+            "CurrentManager": 999,
+            "PreviousManager": 998,
+            "YearsWithCurrManager": 0.05,
+            "YearsWithPrevManager": 0.1,
+            "HierarchyLevel": 1,
+            "GlassdoorRating": 1.5,
+            "JobMarketIndex": 0.95,
+            "TeamCohesion": 1.2,
+            "NineBox": "Box_1",
+            "NineBoxScore": 1
+        };
+
+        const lowRiskEmployee = {
+            "EmployeeID": 99999,
+            "FirstName": "Sarah",
+            "LastName": "Happy",
+            "Email": "sarah.happy@company.com", 
+            "Age": 35,
+            "City": "Delhi",
+            "Race": "Asian",
+            "Ethnicity": "Hindi",
+            "Department": "IT",
+            "JobRole": "M",
+            "MonthlyIncome": 12000,
+            "YearsAtCompany": 8,
+            "NumProjects": 3,
+            "TeamSize": 6,
+            "JobSatisfaction": 4,
+            "EnvironmentSatisfaction": 4,
+            "WorkLifeBalance": 4,
+            "DistanceFromHome": 5,
+            "NumCompaniesWorked": 2,
+            "PercentSalaryHike": 15,
+            "PerformanceRating": 4,
+            "OverTime": "No",
+            "BusinessTravel": "Non-Travel",
+            "MaritalStatus": "Married",
+            "EducationLevel": "Master",
+            "TotalYearsExperience": 12,
+            "PreviousIndustry": "Tech",
+            "TownhallAttendance": 0.9,
+            "VoluntaryContributions": 5,
+            "LeadershipRoles": "Yes",
+            "InternalJobApplications": 1,
+            "TrainingHoursLastYear": 40,
+            "StockOptionLevel": 2,
+            "CurrentManager": 123,
+            "PreviousManager": 122,
+            "YearsWithCurrManager": 4,
+            "YearsWithPrevManager": 4,
+            "HierarchyLevel": 4,
+            "GlassdoorRating": 4.2,
+            "JobMarketIndex": 0.3,
+            "TeamCohesion": 4.1,
+            "NineBox": "Box_9",
+            "NineBoxScore": 9
+        };
+
+        // Initialize event listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            // Mode switching
+            document.getElementById('formModeBtn').addEventListener('click', () => switchMode('form'));
+            document.getElementById('jsonModeBtn').addEventListener('click', () => switchMode('json'));
+            document.getElementById('presetBtn').addEventListener('click', () => switchMode('preset'));
+            
+            // Form submission
+            document.getElementById('inputForm').addEventListener('submit', handleFormSubmit);
+            document.getElementById('predictJsonBtn').addEventListener('click', handleJsonSubmit);
+            document.getElementById('viewSampleBtn').addEventListener('click', showSampleJson);
+        });
+
+        // Model selection
+        function selectModel(model, port) {
+            currentModel = model;
+            currentPort = port;
+            
+            // Update button states
+            document.querySelectorAll('.model-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(model === 'xgboost' ? 'xgbBtn' : 
+                                   model === 'catboost' ? 'catBtn' : 'ensBtn').classList.add('active');
+        }
+
+        // Mode switching
+        function switchMode(mode) {
+            currentMode = mode;
+            
+            // Hide all modes
+            document.getElementById('inputForm').style.display = 'none';
+            document.getElementById('jsonInput').style.display = 'none';
+            document.getElementById('presetMode').style.display = 'none';
+            
+            // Update button states
+            document.querySelectorAll('#formModeBtn, #jsonModeBtn, #presetBtn').forEach(btn => 
+                btn.classList.replace('bg-gray-800', 'bg-gray-600'));
+            
+            // Show selected mode
+            if (mode === 'form') {
+                document.getElementById('inputForm').style.display = 'grid';
+                document.getElementById('formModeBtn').classList.replace('bg-gray-600', 'bg-gray-800');
+            } else if (mode === 'json') {
+                document.getElementById('jsonInput').style.display = 'block';
+                document.getElementById('jsonModeBtn').classList.replace('bg-gray-600', 'bg-gray-800');
+            } else if (mode === 'preset') {
+                document.getElementById('presetMode').style.display = 'block';
+                document.getElementById('presetBtn').classList.replace('bg-gray-600', 'bg-gray-800');
+            }
+        }
+
+        // Form submission handler
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+            
+            // Convert numeric fields
+            ['Age', 'MonthlyIncome', 'YearsAtCompany', 'JobSatisfaction', 'WorkLifeBalance', 'NineBoxScore'].forEach(field => {
+                if (data[field]) data[field] = parseFloat(data[field]);
+            });
+            
+            // Add missing required fields with defaults
+            const defaultData = {
+                ...lowRiskEmployee, // Use low risk as base
+                ...data // Override with form data
+            };
+            
+            await makePrediction(defaultData, false);
+        }
+
+        // JSON submission handler
+        async function handleJsonSubmit() {
+            try {
+                const jsonData = JSON.parse(document.getElementById('jsonPayload').value);
+                await makePrediction(jsonData, false);
+            } catch (error) {
+                displayError('Invalid JSON format. Please check your data.');
+            }
+        }
+
+        // Preset testing functions
+        async function testHighRiskEmployee() {
+            await makePrediction(highRiskEmployee, false);
+        }
+
+        async function testLowRiskEmployee() {
+            await makePrediction(lowRiskEmployee, false);
+        }
+
+        async function compareAllModels() {
+            const models = [
+                { name: 'XGBoost', port: 5001, key: 'xgboost' },
+                { name: 'CatBoost', port: 5002, key: 'catboost' },
+                { name: 'Ensemble', port: 5003, key: 'ensemble' }
+            ];
+            
+            const results = {};
+            
+            for (const model of models) {
+                try {
+                    const response = await fetch(`http://127.0.0.1:${model.port}/predict`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(highRiskEmployee)
+                    });
+                    results[model.key] = await response.json();
+                } catch (error) {
+                    results[model.key] = { error: error.message };
+                }
+            }
+            
+            displayComparison(results);
+        }
+
+        // Main prediction function
+        async function makePrediction(data, isComparison = false) {
+            const apiUrl = `http://127.0.0.1:${currentPort}/predict`;
+            
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    displayError(result.error || `HTTP Error! Status: ${response.status}`);
+                    return;
+                }
+                
+                if (isComparison) {
+                    return result;
+                } else {
+                    displaySinglePrediction(result);
+                }
+                
+            } catch (error) {
+                displayError(`Failed to connect to ${currentModel.toUpperCase()} API (Port ${currentPort}). Ensure server is running.`);
+            }
+        }
+
+        // Display single prediction result
+        function displaySinglePrediction(result) {
+            const resultContainer = document.getElementById('resultContainer');
+            const predictionResult = document.getElementById('predictionResult');
+            const modelUsed = document.getElementById('modelUsed');
+            const rawResponse = document.getElementById('rawResponse');
+            
+            // Show single result, hide comparison
+            document.getElementById('singleResult').style.display = 'block';
+            document.getElementById('comparisonResult').style.display = 'none';
+            
+            // Set prediction text and color
+            predictionResult.textContent = `${result.prediction_label} (${result.probability_percentage})`;
+            predictionResult.className = getRiskColor(result.risk_level);
+            
+            modelUsed.textContent = `Model: ${result.model || currentModel.toUpperCase()} | Risk: ${result.risk_level}`;
+            rawResponse.textContent = JSON.stringify(result, null, 2);
+            
+            resultContainer.style.display = 'block';
+        }
+
+        // Display comparison results
+        function displayComparison(results) {
+            const resultContainer = document.getElementById('resultContainer');
+            const comparisonResult = document.getElementById('comparisonResult');
+            const rawResponse = document.getElementById('rawResponse');
+            
+            // Show comparison, hide single result
+            document.getElementById('singleResult').style.display = 'none';
+            document.getElementById('comparisonResult').style.display = 'grid';
+            
+            // Clear and populate comparison cards
+            comparisonResult.innerHTML = '';
+            
+            Object.entries(results).forEach(([model, result]) => {
+                if (result.error) {
+                    comparisonResult.innerHTML += createErrorCard(model, result.error);
+                } else {
+                    comparisonResult.innerHTML += createPredictionCard(model, result);
+                }
+            });
+            
+            rawResponse.textContent = JSON.stringify(results, null, 2);
+            resultContainer.style.display = 'block';
+        }
+
+        // Helper functions
+        function createPredictionCard(model, result) {
+            const riskClass = getRiskClass(result.risk_level);
+            return `
+                <div class="prediction-card ${riskClass}">
+                    <h4 class="font-bold text-lg">${model.toUpperCase()}</h4>
+                    <p class="text-2xl font-bold mt-2">${result.prediction_label}</p>
+                    <p class="text-lg">${result.probability_percentage}</p>
+                    <p class="text-sm text-gray-300">${result.risk_level}</p>
+                </div>
+            `;
+        }
+
+        function createErrorCard(model, error) {
+            return `
+                <div class="prediction-card">
+                    <h4 class="font-bold text-lg">${model.toUpperCase()}</h4>
+                    <p class="text-red-400 text-sm mt-2">Error: ${error}</p>
+                </div>
+            `;
+        }
+
+        function getRiskColor(riskLevel) {
+            const colors = {
+                'High': 'text-red-500',
+                'Medium-High': 'text-orange-500', 
+                'Medium': 'text-yellow-500',
+                'Low-Medium': 'text-blue-500',
+                'Low': 'text-green-500'
+            };
+            return colors[riskLevel] || 'text-gray-500';
+        }
+
+        function getRiskClass(riskLevel) {
+            if (['High', 'Medium-High'].includes(riskLevel)) return 'high-risk';
+            if (riskLevel === 'Medium') return 'medium-risk';
+            return 'low-risk';
+        }
+
+        function displayError(message) {
+            const predictionResult = document.getElementById('predictionResult');
+            const rawResponse = document.getElementById('rawResponse');
+            
+            predictionResult.textContent = message;
+            predictionResult.className = 'text-red-500';
+            rawResponse.textContent = '';
+            
+            document.getElementById('resultContainer').style.display = 'block';
+            document.getElementById('singleResult').style.display = 'block';
+            document.getElementById('comparisonResult').style.display = 'none';
+        }
+
+        function showSampleJson(e) {
+            e.preventDefault();
+            document.getElementById('jsonPayload').value = JSON.stringify(lowRiskEmployee, null, 2);
+        }
+    </script>
+</body>
+</html>

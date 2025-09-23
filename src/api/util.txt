@@ -1,0 +1,10 @@
+curl -X POST -H "Content-Type: application/json" -d "{\"Age\":30,\"DailyRate\":1200,\"DistanceFromHome\":2,\"HourlyRate\":80,\"JobInvolvement\":3,\"JobSatisfaction\":4,\"MonthlyIncome\":6000,\"MonthlyRate\":15000,\"NumCompaniesWorked\":1,\"RelationshipSatisfaction\":4,\"StockOptionLevel\":1,\"TotalWorkingYears\":10,\"TrainingTimesLastYear\":3,\"WorkLifeBalance\":3,\"YearsAtCompany\":5,\"YearsInCurrentRole\":3,\"YearsSinceLastPromotion\":1,\"YearsWithCurrManager\":4,\"EnvironmentSatisfaction\":4,\"BusinessTravel\":\"Travel_Rarely\",\"Department\":\"Research & Development\",\"EducationField\":\"Life Sciences\",\"Gender\":\"Male\",\"JobLevel\":2,\"JobRole\":\"Research Scientist\",\"MaritalStatus\":\"Single\",\"OverTime\":\"Yes\"}" http://127.0.0.1:5000/predict
+
+
+
+curl -X POST -H "Content-Type: application/json" -d @data.json http://127.0.0.1:5000/predict
+
+
+This method avoids any quoting problems and is the recommended practice for sending more complex data with `curl`. Your API should now receive the request correctly and return a prediction.
+
+This approach is more robust and scalable for any future requests you want to make, and it completely bypasses the shell's quirks. Let me know if you run into any more issues!

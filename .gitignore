@@ -1,0 +1,27 @@
+# Ignore data gen source code
+
+src/data/*
+
+# Ignore raw data
+data/*
+
+#Ignore dev residuals
+*.pyc
+__pycache__/
+catboost_info/
+
+# Keep wheel files
+!dist/*.whl
+
+# Ignore local venv
+.venv/
+
+#Ignore utils
+testing.py
+
+#Ignore csv,html reports
+src/reports/*.html
+src/reports/*.csv
+
+
+
