@@ -41,6 +41,9 @@ One might consider that in attrition analytics, **recall is critical** (catch as
 **Learning** 
 - PCA captured variance (income, tenure, work-life balance) but not class separation.
 - Attrition needs supervised dimension reduction, not PCA.
+<img width="1000" height="800" alt="Figure_4" src="https://github.com/user-attachments/assets/f2be3f30-e39c-43d5-8be9-c28b127cb691" />
+
+
 
 ## Step 2B. All Features + Encoding + SMOTE  
 
@@ -153,6 +156,9 @@ Result: Dataset became **business-realistic & interpretable**.
 
 Employee turnover isn't fully predictable; even with strong risk factors (e.g., low NineBoxScore <=3 signaling career stagnation), external shocks (e.g., family relocation) or internal resilience can alter outcomes. ***Randomness simulates this "noise,"*** ensuring the generated Attrition column reflects probabilistic risks rather than rigid rules. 
 
+
+
+
 ## Step 5. Retraining with XGBoost & CatBoost
 
 With engineered features, models performed better:
@@ -204,6 +210,9 @@ For high-risk inputs (e.g., low GlassdoorRating + stuck NineBoxScore), returns 4
 -   Global drivers like NineBoxScore (top importance ~20%: stagnation in stuck careers), JobMarketIndex (~15%: external pull in hot markets), and GlassdoorRating (~12%: resentment from poor reputation) highlight systemic risks
 -   Explain individual employee predictions (“This employee's risk boosted 15% by low cohesion + hot market")
 
+
+<img width="2331" height="2814" alt="ensemble_shap_summary" src="https://github.com/user-attachments/assets/0c7a5417-173b-420a-9abe-865a92553552" />
+
 ## Deployment
 
 Each model is exposed via **Flask APIs**:
@@ -220,7 +229,12 @@ curl -X POST -H "Content-Type: application/json" -d @data_low_risk.json http://1
 `python src/api/serve_model_ensemble.py
 curl -X POST -H "Content-Type: application/json" -d @data_high_risk.json http://127.0.0.1:5003/predict`
 
+<img width="1855" height="966" alt="image" src="https://github.com/user-attachments/assets/77464e4d-62b2-4b9e-8d33-2137db2b8ca9" />
+
+
 ## Repository Structure
+<img width="663" height="284" alt="image" src="https://github.com/user-attachments/assets/cdc8095b-5cdf-4f58-be73-530d654c6fd1" />
+
 
 ## Key Takeaway
 
