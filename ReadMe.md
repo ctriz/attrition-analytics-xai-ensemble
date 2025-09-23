@@ -231,6 +231,64 @@ curl -X POST -H "Content-Type: application/json" -d @data_high_risk.json http://
 
 <img width="1855" height="966" alt="image" src="https://github.com/user-attachments/assets/77464e4d-62b2-4b9e-8d33-2137db2b8ca9" />
 
+## Step 7. Why Graph Neural Networks (GNNs)?
+Attrition is not just about individual employees — it is fundamentally relational. Traditional models like XGBoost and CatBoost treat employees as independent rows in a dataset, but in reality, attrition is influenced by:
+
+- Manager–subordinate hierarchies (poor managers account for ~50% of turnover).
+- Team dynamics (low cohesion often triggers cluster exits).
+- Departmental context (attrition spreads like contagion within groups).
+
+**Graph Construction**
+
+Nodes = employees.
+Edges =
+	Manager → subordinate (directed, hierarchy).
+	Peer edges within departments (k-nearest neighbors to avoid edge explosion).
+This creates a graph of ~5,000 nodes and ~55,000 edges, with each employee connected to their manager and ~10 peers on average.
+
+**Node Features**
+
+Each employee node carries features such as:
+
+	-Numerical: MonthlyIncome, JobSatisfaction, TrainingHours.
+	-Categorical (encoded): Department, MaritalStatus.
+	-Enriched Signals:
+
+		-EngagementIndex (eNPS/pulse surveys).
+		-BurnoutIndex (overtime + absenteeism).
+		-PromotionStagnation (time since last promotion).
+
+**Model Architectures**
+
+**GraphSAGE**: Efficient neighbor sampling for large graphs.
+
+	-GAT (Graph Attention Network): Learns which edges matter more (e.g., toxic manager vs average peers).
+	
+	-GCN (Graph Convolutional Network): Baseline for relational propagation.
+
+**Training implemented in PyTorch Geometric** with:
+
+	-2–3 layers, 64 hidden dimensions.
+	-Binary cross-entropy loss, with class weights for imbalance.
+	-Dropout (0.3–0.5) for regularization.
+
+**Evaluation**
+
+	-Target: Recall >70% at threshold 0.3, AUC 0.65–0.75.
+	-Threshold tuning performed to balance false positives vs recall.
+	-Explainability: SHAP highlights managers/teams driving attrition risks (“Manager X’s team has 2× churn risk”).
+
+**Expected Outcomes**
+
+	-Performance: Higher recall than CatBoost/XGBoost (70% vs 38%).
+	-Impact: Identify team-level attrition clusters before they cascade.
+	-Business Value: Preventing 100 regrettable exits saves ~$2–5M in rehiring + lost productivity.
+
+**Trade-Offs**
+
+	-Requires GPU for training	
+	-Data prep effort to build edge lists
+	-Ethical need to anonymize and audit manager-level signals.
 
 ## Repository Structure
 <img width="663" height="284" alt="image" src="https://github.com/user-attachments/assets/cdc8095b-5cdf-4f58-be73-530d654c6fd1" />
