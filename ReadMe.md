@@ -156,6 +156,7 @@ Result: Dataset became **business-realistic & interpretable**.
 
 Employee turnover isn't fully predictable; even with strong risk factors (e.g., low NineBoxScore <=3 signaling career stagnation), external shocks (e.g., family relocation) or internal resilience can alter outcomes. ***Randomness simulates this "noise,"*** ensuring the generated Attrition column reflects probabilistic risks rather than rigid rules. 
 
+<img width="1868" height="604" alt="image" src="https://github.com/user-attachments/assets/b7ed2001-6994-45cf-be01-51d8cf839794" />
 
 
 
