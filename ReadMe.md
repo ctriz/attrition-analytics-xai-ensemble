@@ -241,12 +241,17 @@ Attrition is not just about individual employees — it is fundamentally relatio
 - Departmental context (attrition spreads like contagion within groups).
 
 **Graph Construction**
+Nodes = 5,000 employees 
+Edges = Multiple weighted types for rich organizational relationships: 
+	- Hierarchy (manager–subordinate, skip-level, peer managers; weights: 1.0–0.6). 
+	- Dense similarity (cosine similarity on top 20 features like CurrentManager, MonthlyIncome; threshold: 0.5). 
+	- Department networks (intra- and cross-role; weights: 0.85–0.6). 
+	- Performance collaboration (high/medium performers; weights: 0.9–0.5). 
+	- Project history, company events, skill overlap, mentorship, cross-department events, weak ties (weights: 0.9–0.2).
 
-Nodes = employees.
-Edges =
-	Manager → subordinate (directed, hierarchy).
-	Peer edges within departments (k-nearest neighbors to avoid edge explosion).
-This creates a graph of ~5,000 nodes and ~55,000 edges, with each employee connected to their manager and ~10 peers on average.
+This creates a dense graph with 304,999 edges (density: 2.4405%, avg. degree: 61.00), memory optimized using intelligent edge filtering (max 150,000 edges).
+
+<img width="3660" height="3178" alt="gnn_gcn_employee_graph" src="https://github.com/user-attachments/assets/7d42f053-f277-4fc3-903b-fad84af97e36" />
 
 **Node Features**
 
@@ -262,35 +267,39 @@ Each employee node carries features such as:
 
 **Model Architectures**
 
-**GraphSAGE**: Efficient neighbor sampling for large graphs.
+- Dense GCN: Primary model with 4 layers, 384 hidden channels, optimized for dense graphs.  Baseline for relational propagation.
+- GraphSAGE: Supported via sampling for scalability to large organizations. Efficient neighbor sampling for large graphs.
+- GAT: Supported with attention to prioritize key relationships (e.g., influential managers). Learns which edges matter more (e.g., toxic manager vs average peers).
 
-	-GAT (Graph Attention Network): Learns which edges matter more (e.g., toxic manager vs average peers).
-	
-	-GCN (Graph Convolutional Network): Baseline for relational propagation.
+The HybridGNNClassifier combines GCN with a tabular branch (dense layers) and an attention mechanism to capture both relational (e.g., team dynamics) and individual (e.g., promotion stagnation) attrition drivers. 
+
 
 **Training implemented in PyTorch Geometric** with:
-
-	-2–3 layers, 64 hidden dimensions.
-	-Binary cross-entropy loss, with class weights for imbalance.
-	-Dropout (0.3–0.5) for regularization.
+- 4 layers, 384 hidden channels, 898,438 parameters. 
+- Cross-entropy loss with "balanced_focal" class weights ([0.6916, 5.4152]) for 27.7% attrition imbalance.
+- AdamW optimizer (lr=0.001, weight_decay=5e-5), gradient clipping (0.5), ReduceLROnPlateau scheduler.
+- 400 epochs, early stopping (patience=60), stratified splits (Train: 3,000; Val: 1,000; Test: 1,000)
+	
+<img width="4471" height="2955" alt="dense_gnn_gcn_training_curves" src="https://github.com/user-attachments/assets/c2fcf1ff-e4c4-46d3-afdb-2f166c248bf5" />
 
 **Evaluation**
 
-	-Target: Recall >70% at threshold 0.3, AUC 0.65–0.75.
-	-Threshold tuning performed to balance false positives vs recall.
-	-Explainability: SHAP highlights managers/teams driving attrition risks (“Manager X’s team has 2× churn risk”).
+- Metrics: Best Val AUC 0.5822 (epoch 230), Test AUC 0.5271, below benchmarks (XGBoost: 0.650, CatBoost: 0.638).
+- Threshold tuning optimizes F1, balanced accuracy, and recall for imbalanced HR data.
+- Reports: ROC/PR curves, metrics (`dense_gcn_metrics.json`), training history (`dense_gcn_training_history.csv`).
 
 **Expected Outcomes**
 
 	-Performance: Higher recall than CatBoost/XGBoost (70% vs 38%).
 	-Impact: Identify team-level attrition clusters before they cascade.
 	-Business Value: Preventing 100 regrettable exits saves ~$2–5M in rehiring + lost productivity.
+<img width="4470" height="3543" alt="dense_gnn_gcn_threshold_analysis" src="https://github.com/user-attachments/assets/32f3aca1-5d4f-4d59-88af-d29934fb775d" />
 
 **Trade-Offs**
 
-	-Requires GPU for training	
-	-Data prep effort to build edge lists
-	-Ethical need to anonymize and audit manager-level signals.
+- Requires GPU for faster training (CPU used in output, 23-minute runtime).
+- Data prep effort for synthetic organizational data (projects, events, skills).
+- Ethical need to anonymize and audit manager-level signals to avoid bias.
 
 ## Repository Structure
 <img width="663" height="284" alt="image" src="https://github.com/user-attachments/assets/cdc8095b-5cdf-4f58-be73-530d654c6fd1" />
@@ -302,8 +311,12 @@ Each employee node carries features such as:
 -   Adding **synthetic org + market data** + engineered features → realistic predictions 
 -   Ensemble (XGBoost + CatBoost) → **best balance of sensitivity & conservatism**
 -   SHAP explainability → transparent, business-friendly insights
+The project shows how **data quality + engineered features matter more than algorithms alone** in HR attrition analytics. 
+
+## Copyright and Licensing
+Copyright © 2025 Tridib C[@ctriz]. This project is licensed under the MIT License.
  
-The project shows how **data quality + engineered features matter more than algorithms alone** in HR attrition analytics. 🚀
 
 
-> Written with [StackEdit](https://stackedit.io/).
+
+
