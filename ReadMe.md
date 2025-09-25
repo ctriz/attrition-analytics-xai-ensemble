@@ -311,7 +311,11 @@ The HybridGNNClassifier combines GCN with a tabular branch (dense layers) and an
 -   Adding **synthetic org + market data** + engineered features → realistic predictions 
 -   Ensemble (XGBoost + CatBoost) → **best balance of sensitivity & conservatism**
 -   SHAP explainability → transparent, business-friendly insights
-The project shows how **data quality + engineered features matter more than algorithms alone** in HR attrition analytics. 
+The project shows how **data quality + engineered features matter more than algorithms alone** in HR attrition analytics.
+
+## Want to know more about it #
+
+Read here  -> https://medium.com/@ctriz1925/part-3-why-graph-neural-networks-are-the-future-of-attrition-prediction-8046e8ddc058 
 
 ## Copyright and Licensing
 Copyright © 2025 Tridib C[@ctriz]. This project is licensed under the MIT License.
